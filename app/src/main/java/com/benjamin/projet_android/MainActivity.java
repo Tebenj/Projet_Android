@@ -1,10 +1,13 @@
 package com.benjamin.projet_android;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.constraintlayout.widget.ConstraintLayout;
+import androidx.core.content.ContextCompat;
 
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -37,14 +40,25 @@ public class MainActivity extends AppCompatActivity {
     private EditText source;
     private EditText destination;
     private Spinner spinner;
-    private boolean ecoMode = true;
+    private String keyAPI;
+    private boolean ecoMode;
+    private ArrayList<String> hist = new ArrayList<>();
+
+    SharedPreferences settings, history;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         AndroidNetworking.initialize(this);
+
+        settings = getSharedPreferences("settings", MODE_PRIVATE);
+        history = getSharedPreferences("history", MODE_PRIVATE);
+
+        getSettings();
+
         loadLanguages();
+
 
         source = (EditText) findViewById(R.id.et_source);
         destination = (EditText) findViewById(R.id.et_destination);
@@ -52,6 +66,16 @@ public class MainActivity extends AppCompatActivity {
 
         source.setHorizontallyScrolling(false);
         destination.setShowSoftInputOnFocus(false);
+
+        // On obtient l'historique
+        for (int i = 0;; i++) {
+            final String string = history.getString(String.valueOf(i), "");
+            if (!string.equals("")){
+                hist.add(string);
+            } else {
+                break; // On sort de la boucle
+            }
+        }
 
         source.addTextChangedListener(new TextWatcher() {
             @Override
@@ -76,9 +100,18 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
                 if(actionId == EditorInfo.IME_ACTION_DONE) {
+                    // On traduit
                     translate(String.valueOf(source.getText()));
                     InputMethodManager inputMethodManager = (InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);
                     inputMethodManager.hideSoftInputFromWindow(getCurrentFocus().getWindowToken(), 0);
+
+                    // On enregistre dans l'historique
+                    hist.add(source.getText() + " : "+ destination.getText());
+                    SharedPreferences.Editor editor = history.edit();
+                    for (int i = 0; i < hist.size(); i++){
+                        editor.putString(String.valueOf(i), hist.get(i));
+                    }
+                    editor.commit();
                     return true;
                 }
                 return false;
@@ -88,9 +121,14 @@ public class MainActivity extends AppCompatActivity {
         getUsage();
     }
 
+    private void getSettings() {
+        keyAPI = settings.getString("key", "f16099df-fc96-8c90-3beb-3c0eeda65bf8:fx");
+        ecoMode = settings.getBoolean("ecoMode", false);
+    }
+
     private void getUsage() {
         AndroidNetworking.get("https://api-free.deepl.com/v2/usage")
-                .addHeaders("Authorization", "DeepL-Auth-Key f16099df-fc96-8c90-3beb-3c0eeda65bf8:fx")
+                .addHeaders("Authorization", "DeepL-Auth-Key " + keyAPI)
                 .build()
                 .getAsJSONObject(new JSONObjectRequestListener() {
                     @Override
@@ -115,7 +153,7 @@ public class MainActivity extends AppCompatActivity {
         Context that = this;
 
         AndroidNetworking.get("https://api-free.deepl.com/v2/languages")
-                .addHeaders("Authorization", "DeepL-Auth-Key f16099df-fc96-8c90-3beb-3c0eeda65bf8:fx")
+                .addHeaders("Authorization", "DeepL-Auth-Key " + keyAPI)
                 .build()
                 .getAsJSONArray(new JSONArrayRequestListener() {
                     @Override
@@ -140,6 +178,16 @@ public class MainActivity extends AppCompatActivity {
 
                                 @Override
                                 public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                                    // Easter egg
+                                    Language selectedLanguage = (Language) parent.getItemAtPosition(position);
+                                    ConstraintLayout background = (ConstraintLayout) findViewById(R.id.background);
+                                    if (selectedLanguage.getId().equals("IT")) {
+                                        background.setBackgroundResource(R.drawable.rome);
+                                    } else {
+                                        background.setBackground(null);
+                                    }
+
+                                    // Traduction
                                     translate(String.valueOf(source.getText()));
                                 }
 
@@ -163,7 +211,7 @@ public class MainActivity extends AppCompatActivity {
     public void translate(String text) {
         Language language = (Language) spinner.getSelectedItem();
         AndroidNetworking.post("https://api-free.deepl.com/v2/translate")
-                .addHeaders("Authorization", "DeepL-Auth-Key f16099df-fc96-8c90-3beb-3c0eeda65bf8:fx")
+                .addHeaders("Authorization", "DeepL-Auth-Key " + keyAPI)
                 .addBodyParameter("text", text)
                 .addBodyParameter("target_lang", language.getId())
                 .build()
@@ -185,6 +233,14 @@ public class MainActivity extends AppCompatActivity {
 
                             // On affiche la consommation
                             getUsage();
+
+                            // Easter Egg
+                            ConstraintLayout background = (ConstraintLayout) findViewById(R.id.background);
+                            if (translation.getString("detected_source_language").equals("IT") || ((Language) spinner.getSelectedItem()).getId().equals("IT")) {
+                                background.setBackgroundResource(R.drawable.rome);
+                            } else {
+                                background.setBackground(null);
+                            }
                         } catch (JSONException e) {
                             throw new RuntimeException(e);
                         }
@@ -205,7 +261,15 @@ public class MainActivity extends AppCompatActivity {
 
     public void Parametre(View view){
         Intent intent = new Intent(MainActivity.this, ParametersActivity.class);
-        startActivity(intent);
+        startActivityForResult(intent,0);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (resultCode == Activity.RESULT_OK) {
+            getSettings();
+        }
     }
 }
 
