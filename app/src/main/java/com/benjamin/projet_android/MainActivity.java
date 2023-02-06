@@ -2,15 +2,21 @@ package com.benjamin.projet_android;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.view.KeyEvent;
 import android.view.View;
+import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputMethodManager;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.Spinner;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.androidnetworking.AndroidNetworking;
@@ -31,6 +37,7 @@ public class MainActivity extends AppCompatActivity {
     private EditText source;
     private EditText destination;
     private Spinner spinner;
+    private boolean ecoMode = true;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -43,7 +50,7 @@ public class MainActivity extends AppCompatActivity {
         destination = (EditText) findViewById(R.id.et_destination);
         spinner = (Spinner) findViewById(R.id.sp_languages);
 
-
+        source.setHorizontallyScrolling(false);
         destination.setShowSoftInputOnFocus(false);
 
         source.addTextChangedListener(new TextWatcher() {
@@ -54,7 +61,9 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
-                translate(String.valueOf(source.getText()));
+                if (!ecoMode) {
+                    translate(String.valueOf(source.getText()));
+                }
             }
 
             @Override
@@ -62,6 +71,43 @@ public class MainActivity extends AppCompatActivity {
 
             }
         });
+
+        source.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+            @Override
+            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+                if(actionId == EditorInfo.IME_ACTION_DONE) {
+                    translate(String.valueOf(source.getText()));
+                    InputMethodManager inputMethodManager = (InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);
+                    inputMethodManager.hideSoftInputFromWindow(getCurrentFocus().getWindowToken(), 0);
+                    return true;
+                }
+                return false;
+            }
+        });
+
+        getUsage();
+    }
+
+    private void getUsage() {
+        AndroidNetworking.get("https://api-free.deepl.com/v2/usage")
+                .addHeaders("Authorization", "DeepL-Auth-Key f16099df-fc96-8c90-3beb-3c0eeda65bf8:fx")
+                .build()
+                .getAsJSONObject(new JSONObjectRequestListener() {
+                    @Override
+                    public void onResponse(JSONObject response) {
+                        try {
+                            TextView usage = (TextView) findViewById(R.id.txt_usage);
+                            usage.setText("Consommation\n" + response.getString("character_count") + " / " + response.getString("character_limit"));
+                        } catch (JSONException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+
+                    @Override
+                    public void onError(ANError anError) {
+
+                    }
+                });
     }
 
     public void loadLanguages() {
@@ -88,6 +134,20 @@ public class MainActivity extends AppCompatActivity {
                             // On affiche les langues dans le spinner
                             ArrayAdapter<Language> adapter = new ArrayAdapter<>(that, android.R.layout.simple_spinner_dropdown_item, languageList);
                             spinner.setAdapter(adapter);
+
+                            // On traduit à nouveau à chaque fois qu'on change de langue
+                            spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+
+                                @Override
+                                public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                                    translate(String.valueOf(source.getText()));
+                                }
+
+                                @Override
+                                public void onNothingSelected(AdapterView<?> parent) {
+
+                                }
+                            });
                         } catch (JSONException e) {
                             e.printStackTrace();
                         }
@@ -111,9 +171,20 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void onResponse(JSONObject response) {
                         try {
+                            // On récupère la traduction
                             JSONArray translations = response.getJSONArray("translations");
                             JSONObject translation = translations.getJSONObject(0);
+
+                            // On affiche le texte traduit
                             destination.setText(translation.getString("text"));
+
+                            // On affiche la langue détectée
+                            TextView textViewSource = (TextView) findViewById(R.id.txt_source);
+                            ArrayList<Language> languages = new ArrayList<>();
+                            textViewSource.setText(translation.getString("detected_source_language"));
+
+                            // On affiche la consommation
+                            getUsage();
                         } catch (JSONException e) {
                             throw new RuntimeException(e);
                         }
@@ -122,7 +193,7 @@ public class MainActivity extends AppCompatActivity {
 
                     @Override
                     public void onError(ANError anError) {
-
+                        System.out.println(anError);
                     }
                 });
     }
