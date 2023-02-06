@@ -23,11 +23,14 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+
+import com.androidnetworking.interfaces.StringRequestListener;
 import com.benjamin.projet_android.Language;
 
 public class MainActivity extends AppCompatActivity {
     private EditText source;
     private EditText destination;
+    private Spinner spinner;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -38,6 +41,8 @@ public class MainActivity extends AppCompatActivity {
 
         source = (EditText) findViewById(R.id.et_source);
         destination = (EditText) findViewById(R.id.et_destination);
+        spinner = (Spinner) findViewById(R.id.sp_languages);
+
 
         destination.setShowSoftInputOnFocus(false);
 
@@ -82,7 +87,6 @@ public class MainActivity extends AppCompatActivity {
 
                             // On affiche les langues dans le spinner
                             ArrayAdapter<Language> adapter = new ArrayAdapter<>(that, android.R.layout.simple_spinner_dropdown_item, languageList);
-                            Spinner spinner = (Spinner) findViewById(R.id.sp_languages);
                             spinner.setAdapter(adapter);
                         } catch (JSONException e) {
                             e.printStackTrace();
@@ -97,7 +101,30 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void translate(String text) {
-        destination.setText(text);
+        Language language = (Language) spinner.getSelectedItem();
+        AndroidNetworking.post("https://api-free.deepl.com/v2/translate")
+                .addHeaders("Authorization", "DeepL-Auth-Key f16099df-fc96-8c90-3beb-3c0eeda65bf8:fx")
+                .addBodyParameter("text", text)
+                .addBodyParameter("target_lang", language.getId())
+                .build()
+                .getAsJSONObject(new JSONObjectRequestListener() {
+                    @Override
+                    public void onResponse(JSONObject response) {
+                        try {
+                            JSONArray translations = response.getJSONArray("translations");
+                            JSONObject translation = translations.getJSONObject(0);
+                            destination.setText(translation.getString("text"));
+                        } catch (JSONException e) {
+                            throw new RuntimeException(e);
+                        }
+
+                    }
+
+                    @Override
+                    public void onError(ANError anError) {
+
+                    }
+                });
     }
 
     public void Historique(View view) {
