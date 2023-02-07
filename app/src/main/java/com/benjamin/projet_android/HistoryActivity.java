@@ -30,7 +30,9 @@ public class HistoryActivity extends AppCompatActivity {
                 break; // On sort de la boucle
             }
         }
+        Collections.reverse(hist);
 
+        // On affiche l'historique dans la ListView
         ArrayAdapter<String> arrayAdapter = new ArrayAdapter<String>(
                 this,
                 android.R.layout.simple_list_item_1,

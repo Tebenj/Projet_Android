@@ -32,7 +32,7 @@ public class ParametersActivity extends AppCompatActivity {
         editor.putString("key", key.getText().toString());
         editor.commit();
 
-        // on retourne à l'activité principale
+        // On retourne à l'activité principale
         Intent returnIntent = new Intent();
         setResult(Activity.RESULT_OK, returnIntent);
         finish();

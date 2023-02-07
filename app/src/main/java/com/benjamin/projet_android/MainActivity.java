@@ -37,12 +37,12 @@ import com.androidnetworking.interfaces.StringRequestListener;
 import com.benjamin.projet_android.Language;
 
 public class MainActivity extends AppCompatActivity {
-    private EditText source;
-    private EditText destination;
-    private Spinner spinner;
-    private String keyAPI;
-    private boolean ecoMode;
-    private ArrayList<String> hist = new ArrayList<>();
+    private EditText source; // Champ de texte source
+    private EditText destination; // Champ de texte où la traduction sera affichée
+    private Spinner spinner; // Spinner pour le choix de la langue
+    private String keyAPI; // Clé de l'API utilisée
+    private boolean ecoMode; // Mode économie de caractères
+    private ArrayList<String> hist = new ArrayList<>(); // Historique
 
     SharedPreferences settings, history;
 
@@ -77,6 +77,7 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
+        // Si on n'est pas en mode économie de caractères, le texte est traduit en temps réel
         source.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {
@@ -96,6 +97,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        // Quand on appuie sur le bouton DONE du clavier, le texte est traduit et ajouté à l'historique
         source.setOnEditorActionListener(new TextView.OnEditorActionListener() {
             @Override
             public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
@@ -106,12 +108,14 @@ public class MainActivity extends AppCompatActivity {
                     inputMethodManager.hideSoftInputFromWindow(getCurrentFocus().getWindowToken(), 0);
 
                     // On enregistre dans l'historique
-                    hist.add(source.getText() + " : "+ destination.getText());
-                    SharedPreferences.Editor editor = history.edit();
-                    for (int i = 0; i < hist.size(); i++){
-                        editor.putString(String.valueOf(i), hist.get(i));
+                    if (!destination.getText().toString().isEmpty()) {
+                        hist.add(source.getText() + " : "+ destination.getText());
+                        SharedPreferences.Editor editor = history.edit();
+                        for (int i = 0; i < hist.size(); i++){
+                            editor.putString(String.valueOf(i), hist.get(i));
+                        }
+                        editor.commit();
                     }
-                    editor.commit();
                     return true;
                 }
                 return false;
@@ -121,11 +125,13 @@ public class MainActivity extends AppCompatActivity {
         getUsage();
     }
 
+    // On récupère les paramètres stockés en mémoire
     private void getSettings() {
         keyAPI = settings.getString("key", "f16099df-fc96-8c90-3beb-3c0eeda65bf8:fx");
         ecoMode = settings.getBoolean("ecoMode", false);
     }
 
+    // On récupère la Consommation
     private void getUsage() {
         AndroidNetworking.get("https://api-free.deepl.com/v2/usage")
                 .addHeaders("Authorization", "DeepL-Auth-Key " + keyAPI)
@@ -143,11 +149,12 @@ public class MainActivity extends AppCompatActivity {
 
                     @Override
                     public void onError(ANError anError) {
-
+                        System.out.println(anError);
                     }
                 });
     }
 
+    // On récupère les langues disponibles dans l'API
     public void loadLanguages() {
         // On conserve le contexte de l'activité
         Context that = this;
@@ -208,8 +215,9 @@ public class MainActivity extends AppCompatActivity {
                 });
     }
 
+    // Traduction du texte
     public void translate(String text) {
-        Language language = (Language) spinner.getSelectedItem();
+        Language language = (Language) spinner.getSelectedItem(); // On récupère la langue choisie
         AndroidNetworking.post("https://api-free.deepl.com/v2/translate")
                 .addHeaders("Authorization", "DeepL-Auth-Key " + keyAPI)
                 .addBodyParameter("text", text)
@@ -264,6 +272,7 @@ public class MainActivity extends AppCompatActivity {
         startActivityForResult(intent,0);
     }
 
+    // On enregistre les modifications effectuées dans les paramètres
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
