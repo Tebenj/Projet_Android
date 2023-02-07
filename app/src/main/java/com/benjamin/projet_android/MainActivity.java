@@ -10,6 +10,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.text.Editable;
+import android.text.InputType;
 import android.text.TextWatcher;
 import android.view.KeyEvent;
 import android.view.View;
@@ -64,7 +65,9 @@ public class MainActivity extends AppCompatActivity {
         destination = (EditText) findViewById(R.id.et_destination);
         spinner = (Spinner) findViewById(R.id.sp_languages);
 
-        source.setHorizontallyScrolling(false);
+        //source.setHorizontallyScrolling(false);
+        source.setImeOptions(EditorInfo.IME_ACTION_DONE);
+        source.setRawInputType(InputType.TYPE_CLASS_TEXT);
         destination.setShowSoftInputOnFocus(false);
 
         // On obtient l'historique

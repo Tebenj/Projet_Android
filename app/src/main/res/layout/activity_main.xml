@@ -18,8 +18,9 @@
         android:gravity="start|top"
         android:hint="Entrer le texte"
         android:imeOptions="actionDone"
-        android:inputType="text"
+        android:inputType="textMultiLine"
         android:scrollHorizontally="true"
+        android:singleLine="false"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
