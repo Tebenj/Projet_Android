@@ -214,13 +214,18 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void onError(ANError anError) {
                         System.out.println(anError);
+                        Toast toast = Toast.makeText(that, "Erreur, contrôler la clé de l'API", Toast.LENGTH_SHORT);
+                        toast.show();
                     }
                 });
     }
 
     // Traduction du texte
     public void translate(String text) {
-        Language language = (Language) spinner.getSelectedItem(); // On récupère la langue choisie
+        // On conserve le context
+        Context that = this;
+
+        Language language = spinner.getCount() == 0 ? new Language("", "") : (Language) spinner.getSelectedItem(); // On récupère la langue choisie
         AndroidNetworking.post("https://api-free.deepl.com/v2/translate")
                 .addHeaders("Authorization", "DeepL-Auth-Key " + keyAPI)
                 .addBodyParameter("text", text)
@@ -261,6 +266,8 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void onError(ANError anError) {
                         System.out.println(anError);
+                        Toast toast = Toast.makeText(that, "Erreur, contrôler la clé de l'API", Toast.LENGTH_SHORT);
+                        toast.show();
                     }
                 });
     }
@@ -281,6 +288,8 @@ public class MainActivity extends AppCompatActivity {
         super.onActivityResult(requestCode, resultCode, data);
         if (resultCode == Activity.RESULT_OK) {
             getSettings();
+            loadLanguages();
+            getUsage();
         }
     }
 }
